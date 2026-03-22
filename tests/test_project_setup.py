@@ -27,7 +27,7 @@ class TestProjectStructure:
             content = f.read()
 
         required_packages = [
-            "google-generativeai",
+            "google-genai",
             "chromadb",
             "pytest",
         ]
