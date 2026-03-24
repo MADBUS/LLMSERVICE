@@ -48,13 +48,17 @@ class TestDataInitializer:
 
         # 임베딩 반환값 설정
         mock_embedding.embed_text.return_value = [0.1, 0.2, 0.3]
+        # 기존 데이터 없음
+        mock_vector.exists.return_value = False
 
         # When: 데이터 초기화 실행
         initializer = DataInitializer(
             api_key="test-key",
             collection_name="products"
         )
-        initializer.initialize()
+        result = initializer.initialize()
 
         # Then: 각 상품이 벡터DB에 저장됨
         assert mock_vector.add_item.call_count == len(SAMPLE_PRODUCTS)
+        assert result["added"] == len(SAMPLE_PRODUCTS)
+        assert result["skipped"] == 0

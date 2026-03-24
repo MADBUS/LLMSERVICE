@@ -62,32 +62,45 @@ SAMPLE_PRODUCTS: List[Dict[str, Any]] = [
 class DataInitializer:
     """벡터DB에 샘플 데이터를 초기화하는 클래스"""
 
-    def __init__(self, api_key: str, collection_name: str):
+    def __init__(self, api_key: str, collection_name: str, persist_directory: str = None):
         """
         DataInitializer 초기화
 
         Args:
             api_key: Gemini API 키
             collection_name: 벡터DB 컬렉션 이름
+            persist_directory: 데이터 영구 저장 경로
         """
+        self.api_key = api_key
         self.embedding_service = EmbeddingService(api_key=api_key)
-        self.vector_store = VectorStore(collection_name=collection_name)
+        self.vector_store = VectorStore(
+            collection_name=collection_name,
+            persist_directory=persist_directory
+        )
 
-    def initialize(self, products: List[Dict[str, Any]] = None) -> int:
+    def initialize(self, products: List[Dict[str, Any]] = None) -> dict:
         """
-        상품 데이터를 벡터DB에 저장
+        상품 데이터를 벡터DB에 저장 (있으면 스킵, 없으면 추가)
 
         Args:
             products: 저장할 상품 리스트 (기본값: SAMPLE_PRODUCTS)
 
         Returns:
-            저장된 상품 수
+            {"total": 전체 수, "added": 새로 추가된 수, "skipped": 스킵된 수}
         """
         if products is None:
             products = SAMPLE_PRODUCTS
 
+        added = 0
+        skipped = 0
+
         for product in products:
-            # 상품 설명을 임베딩으로 변환
+            # 이미 존재하는지 확인
+            if self.vector_store.exists(product["id"]):
+                skipped += 1
+                continue
+
+            # 상품 설명을 임베딩으로 변환 (새 상품만)
             text_to_embed = f"{product['name']} - {product['description']}"
             embedding = self.embedding_service.embed_text(text_to_embed)
 
@@ -102,5 +115,6 @@ class DataInitializer:
                     "price": product["price"]
                 }
             )
+            added += 1
 
-        return len(products)
+        return {"total": len(products), "added": added, "skipped": skipped}

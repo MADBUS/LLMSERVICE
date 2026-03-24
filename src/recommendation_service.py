@@ -14,17 +14,21 @@ class RecommendationService:
         result = service.recommend("노트북 추천해줘")
     """
 
-    def __init__(self, api_key: str, collection_name: str):
+    def __init__(self, api_key: str, collection_name: str, persist_directory: str = None):
         """
         RecommendationService 초기화
 
         Args:
             api_key: Gemini API 키
             collection_name: 벡터DB 컬렉션 이름
+            persist_directory: 데이터 영구 저장 경로
         """
         # 3개 컴포넌트 자동 생성
         self.embedding_service = EmbeddingService(api_key=api_key)
-        self.vector_store = VectorStore(collection_name=collection_name)
+        self.vector_store = VectorStore(
+            collection_name=collection_name,
+            persist_directory=persist_directory
+        )
         self.llm_service = LLMService(api_key=api_key)
 
         # RAG 파이프라인 연결

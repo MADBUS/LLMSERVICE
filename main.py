@@ -23,20 +23,31 @@ def run_demo(api_key: str = None, collection_name: str = "products"):
             print("오류: GEMINI_API_KEY 환경변수를 설정해주세요.")
             return
 
+    # 데이터 영구 저장 경로
+    persist_directory = "./chroma_data"
+
     print("=" * 50)
     print("[RAG 기반 상품 추천 시스템]")
     print("=" * 50)
     print()
 
-    # 데이터 초기화
-    print(">> 샘플 데이터를 로딩 중...")
-    initializer = DataInitializer(api_key=api_key, collection_name=collection_name)
-    count = initializer.initialize()
-    print(f">> {count}개의 상품이 로딩되었습니다.")
+    # 데이터 초기화 (있으면 스킵, 없으면 추가)
+    print(">> 샘플 데이터를 확인 중...")
+    initializer = DataInitializer(
+        api_key=api_key,
+        collection_name=collection_name,
+        persist_directory=persist_directory
+    )
+    result = initializer.initialize()
+    print(f">> 전체 {result['total']}개 상품 (새로 추가: {result['added']}, 기존: {result['skipped']})")
     print()
 
     # 추천 서비스 초기화
-    service = RecommendationService(api_key=api_key, collection_name=collection_name)
+    service = RecommendationService(
+        api_key=api_key,
+        collection_name=collection_name,
+        persist_directory=persist_directory
+    )
 
     print("질문을 입력하세요 (종료: quit)")
     print("-" * 50)

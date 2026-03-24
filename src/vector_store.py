@@ -103,6 +103,38 @@ class VectorStore:
         """컬렉션의 아이템 수 반환"""
         return self.collection.count()
 
+    def exists(self, item_id: str) -> bool:
+        """아이템이 존재하는지 확인"""
+        result = self.collection.get(ids=[item_id])
+        return len(result["ids"]) > 0
+
+    def upsert_item(
+        self,
+        item_id: str,
+        embedding: List[float],
+        metadata: Dict[str, Any]
+    ) -> bool:
+        """
+        아이템 추가 또는 업데이트 (있으면 스킵, 없으면 추가)
+
+        Args:
+            item_id: 아이템 고유 ID
+            embedding: 임베딩 벡터
+            metadata: 아이템 메타데이터
+
+        Returns:
+            True: 새로 추가됨, False: 이미 존재하여 스킵
+        """
+        if self.exists(item_id):
+            return False  # 이미 있으면 스킵
+
+        self.collection.add(
+            ids=[item_id],
+            embeddings=[embedding],
+            metadatas=[metadata]
+        )
+        return True
+
     def delete_collection(self) -> None:
         """컬렉션 삭제"""
         self.client.delete_collection(self.collection_name)

@@ -26,7 +26,10 @@ class TestRecommendationService:
 
         # Then: 3개 서비스가 자동 생성됨
         mock_embedding_cls.assert_called_once_with(api_key=api_key)
-        mock_vector_cls.assert_called_once_with(collection_name=collection_name)
+        mock_vector_cls.assert_called_once_with(
+            collection_name=collection_name,
+            persist_directory=None
+        )
         mock_llm_cls.assert_called_once_with(api_key=api_key)
 
     @patch('src.recommendation_service.EmbeddingService')
