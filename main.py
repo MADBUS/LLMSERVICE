@@ -24,42 +24,42 @@ def run_demo(api_key: str = None, collection_name: str = "products"):
             return
 
     print("=" * 50)
-    print("🛒 RAG 기반 상품 추천 시스템")
+    print("[RAG 기반 상품 추천 시스템]")
     print("=" * 50)
     print()
 
     # 데이터 초기화
-    print("📦 샘플 데이터를 로딩 중...")
+    print(">> 샘플 데이터를 로딩 중...")
     initializer = DataInitializer(api_key=api_key, collection_name=collection_name)
     count = initializer.initialize()
-    print(f"✅ {count}개의 상품이 로딩되었습니다.")
+    print(f">> {count}개의 상품이 로딩되었습니다.")
     print()
 
     # 추천 서비스 초기화
     service = RecommendationService(api_key=api_key, collection_name=collection_name)
 
-    print("💬 질문을 입력하세요 (종료: quit)")
+    print("질문을 입력하세요 (종료: quit)")
     print("-" * 50)
 
     while True:
         try:
-            user_input = input("\n🙋 질문: ").strip()
+            user_input = input("\n[질문] ").strip()
 
             if user_input.lower() in ['quit', 'exit', 'q', '종료']:
-                print("\n👋 이용해주셔서 감사합니다!")
+                print("\n이용해주셔서 감사합니다!")
                 break
 
             if not user_input:
                 print("질문을 입력해주세요.")
                 continue
 
-            print("\n🤖 추천 결과:")
+            print("\n[추천 결과]")
             print("-" * 30)
             result = service.recommend(user_input)
             print(result)
 
         except KeyboardInterrupt:
-            print("\n\n👋 프로그램을 종료합니다.")
+            print("\n\n프로그램을 종료합니다.")
             break
 
 

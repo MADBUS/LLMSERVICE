@@ -6,7 +6,7 @@ from typing import List
 class EmbeddingService:
     """Gemini API를 사용하여 텍스트를 임베딩 벡터로 변환하는 서비스"""
 
-    def __init__(self, api_key: str, model: str = "text-embedding-004"):
+    def __init__(self, api_key: str, model: str = "gemini-embedding-001"):
         """
         EmbeddingService 초기화
 
