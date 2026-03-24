@@ -1,7 +1,11 @@
 """RAG 기반 추천 시스템 데모"""
 import os
+from dotenv import load_dotenv
 from src.recommendation_service import RecommendationService
 from src.init_data import DataInitializer
+
+# .env.dev 파일에서 환경변수 로드
+load_dotenv(".env.dev")
 
 
 def run_demo(api_key: str = None, collection_name: str = "products"):
