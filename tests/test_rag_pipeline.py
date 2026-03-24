@@ -1,6 +1,6 @@
 """RAG 파이프라인 테스트"""
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 from src.rag_pipeline import RAGPipeline
 
 
