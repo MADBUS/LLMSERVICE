@@ -14,7 +14,7 @@ class LLMService:
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-2.0-flash",
+        model: str = "gemini-2.5-flash",
         system_prompt: Optional[str] = None
     ):
         """
@@ -22,7 +22,7 @@ class LLMService:
 
         Args:
             api_key: Gemini API 키
-            model: 사용할 LLM 모델 (기본값: gemini-2.0-flash)
+            model: 사용할 LLM 모델 (기본값: gemini-2.5-flash)
             system_prompt: 시스템 프롬프트 (기본값: DEFAULT_SYSTEM_PROMPT)
         """
         self.api_key = api_key
