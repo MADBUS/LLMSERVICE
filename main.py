@@ -1,77 +1,203 @@
-"""RAG 기반 추천 시스템 데모"""
+"""날씨 기반 코디 추천 시스템"""
 import os
 from dotenv import load_dotenv
-from src.recommendation_service import RecommendationService
-from src.init_data import DataInitializer
 
-# .env.dev 파일에서 환경변수 로드
-load_dotenv(".env.dev")
+from src.outfit_recommendation_service import OutfitRecommendationService
+from src.clothing_service import ClothingService
+from src.database.clothing_repository import ClothingRepository
+
+# .env.dev 파일에서 환경변수 로드 (스크립트 위치 기준)
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env.dev"))
 
 
-def run_demo(api_key: str = None, collection_name: str = "products"):
+# 샘플 옷 데이터
+SAMPLE_CLOTHES = [
+    # 아우터 (6개)
+    ('검정 롱패딩', '아우터', '블랙', '겨울', '캐주얼', '무릎까지 오는 따뜻한 롱패딩', '노스페이스', 5),
+    ('베이지 트렌치코트', '아우터', '베이지', '가을', '미니멀', '클래식 트렌치코트', '버버리', 3),
+    ('네이비 블레이저', '아우터', '네이비', '사계절', '포멀', '비즈니스 자켓', '지오다노', 2),
+    ('카키 야상', '아우터', '그린', '봄', '캐주얼', '밀리터리 야상 점퍼', '유니클로', 3),
+    ('그레이 후드집업', '아우터', '그레이', '봄', '스포티', '운동용 후드 집업', '나이키', 2),
+    ('브라운 가죽자켓', '아우터', '브라운', '가을', '스트릿', '빈티지 라이더 자켓', '올세인츠', 3),
+    # 상의 (8개)
+    ('흰색 기본 티셔츠', '상의', '화이트', '여름', '캐주얼', '깔끔한 면 티셔츠', '무인양품', 1),
+    ('네이비 옥스포드 셔츠', '상의', '네이비', '사계절', '포멀', '비즈니스 캐주얼 셔츠', '랄프로렌', 2),
+    ('스트라이프 셔츠', '상의', '블루', '봄', '캐주얼', '파란 줄무늬 셔츠', '자라', 2),
+    ('그레이 캐시미어 니트', '상의', '그레이', '겨울', '미니멀', '캐시미어 스웨터', '유니클로', 4),
+    ('검정 터틀넥', '상의', '블랙', '겨울', '미니멀', '따뜻한 터틀넥', 'COS', 4),
+    ('베이지 맨투맨', '상의', '베이지', '가을', '캐주얼', '오버핏 맨투맨', '아디다스', 3),
+    ('핑크 블라우스', '상의', '핑크', '봄', '포멀', '실크 블라우스', '마시모두띠', 2),
+    ('화이트 크롭탑', '상의', '화이트', '여름', '스트릿', '시원한 크롭 티', 'H&M', 1),
+    # 하의 (6개)
+    ('검정 슬랙스', '하의', '블랙', '사계절', '포멀', '정장 바지', '지오다노', 3),
+    ('인디고 청바지', '하의', '블루', '사계절', '캐주얼', '스트레이트핏 데님', '리바이스', 3),
+    ('베이지 치노팬츠', '하의', '베이지', '봄', '캐주얼', '면 치노 팬츠', '갭', 2),
+    ('화이트 와이드팬츠', '하의', '화이트', '여름', '미니멀', '린넨 와이드 팬츠', '자라', 1),
+    ('그레이 조거팬츠', '하의', '그레이', '사계절', '스포티', '운동용 조거', '나이키', 3),
+    ('네이비 반바지', '하의', '네이비', '여름', '캐주얼', '여름용 반바지', '폴로', 1),
+    # 신발 (5개)
+    ('흰색 운동화', '신발', '화이트', '사계절', '캐주얼', '캔버스 스니커즈', '컨버스', 2),
+    ('검정 로퍼', '신발', '블랙', '사계절', '포멀', '가죽 로퍼', '콜한', 2),
+    ('브라운 첼시부츠', '신발', '브라운', '겨울', '캐주얼', '가죽 앵클부츠', '닥터마틴', 4),
+    ('베이지 슬립온', '신발', '베이지', '여름', '미니멀', '캔버스 슬립온', '반스', 1),
+    ('네이비 러닝화', '신발', '네이비', '사계절', '스포티', '러닝화', '뉴발란스', 2),
+    # 액세서리 (4개)
+    ('블랙 가죽벨트', '액세서리', '블랙', '사계절', '포멀', '소가죽 벨트', '몽블랑', 2),
+    ('베이지 버킷햇', '액세서리', '베이지', '여름', '캐주얼', '면 버킷햇', '캉골', 1),
+    ('그레이 머플러', '액세서리', '그레이', '겨울', '미니멀', '울 머플러', '아크네', 5),
+    ('브라운 토트백', '액세서리', '브라운', '사계절', '캐주얼', '가죽 토트백', '코치', 2),
+]
+
+
+def insert_sample_clothes():
+    """샘플 옷 데이터를 MySQL에 삽입"""
+    import mysql.connector
+
+    conn = mysql.connector.connect(
+        host=os.environ.get("MYSQL_HOST", "localhost"),
+        port=int(os.environ.get("MYSQL_PORT", "3306")),
+        user=os.environ.get("MYSQL_USER", "root"),
+        password=os.environ.get("MYSQL_PASSWORD", ""),
+        database=os.environ.get("MYSQL_DATABASE", "clothing_db"),
+        charset="utf8mb4"
+    )
+    cursor = conn.cursor()
+
+    sql = """
+        INSERT INTO clothes (name, category, color, season, style, description, brand, warmth_level)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """
-    대화형 추천 데모 실행
+    cursor.executemany(sql, SAMPLE_CLOTHES)
+    conn.commit()
 
-    Args:
-        api_key: Gemini API 키 (기본값: 환경변수 GEMINI_API_KEY)
-        collection_name: 벡터DB 컬렉션 이름
-    """
-    # API 키 설정
-    if api_key is None:
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            print("오류: GEMINI_API_KEY 환경변수를 설정해주세요.")
-            return
+    cursor.close()
+    conn.close()
 
-    # 데이터 영구 저장 경로
-    persist_directory = "./chroma_data"
+    return len(SAMPLE_CLOTHES)
+
+
+def run_demo():
+    """코디 추천 데모 실행"""
+    # API 키 확인
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    kma_key = os.environ.get("KMA_API_KEY")
+
+    if not gemini_key:
+        print("오류: GEMINI_API_KEY 환경변수를 설정해주세요.")
+        return
+
+    if not kma_key:
+        print("경고: KMA_API_KEY(기상청)가 없습니다. 날씨 기능이 제한됩니다.")
 
     print("=" * 50)
-    print("[RAG 기반 상품 추천 시스템]")
+    print("[날씨 기반 코디 추천 시스템]")
     print("=" * 50)
     print()
 
-    # 데이터 초기화 (있으면 스킵, 없으면 추가)
-    print(">> 샘플 데이터를 확인 중...")
-    initializer = DataInitializer(
-        api_key=api_key,
-        collection_name=collection_name,
-        persist_directory=persist_directory
-    )
-    result = initializer.initialize()
-    print(f">> 전체 {result['total']}개 상품 (새로 추가: {result['added']}, 기존: {result['skipped']})")
+    # 데이터베이스 초기화
+    try:
+        print(">> 데이터베이스 연결 중...")
+        ClothingService.init_database()
+    except Exception as e:
+        print(f"DB 연결 실패: {e}")
+        print("MySQL이 실행 중인지 확인하고, .env.dev 파일에 DB 설정을 확인해주세요.")
+        return
+
+    # 서비스 초기화
+    try:
+        service = OutfitRecommendationService(
+            gemini_api_key=gemini_key
+        )
+    except Exception as e:
+        print(f"서비스 초기화 실패: {e}")
+        return
+
+    # 날씨 정보 출력
+    if kma_key:
+        print(">> 현재 날씨 정보 조회 중...")
+        weather = service.get_weather("서울")
+        if weather:
+            print(f">> {weather.to_description()}")
+        else:
+            print(">> 날씨 정보를 가져올 수 없습니다.")
     print()
 
-    # 추천 서비스 초기화
-    service = RecommendationService(
-        api_key=api_key,
-        collection_name=collection_name,
-        persist_directory=persist_directory
-    )
+    # 옷 개수 확인
+    try:
+        clothes_count = service.clothing_service.count()
+    except Exception:
+        clothes_count = 0
 
-    print("질문을 입력하세요 (종료: quit)")
+    # 옷이 없으면 샘플 데이터 자동 삽입
+    if clothes_count == 0:
+        print(">> 등록된 옷이 없습니다. 샘플 데이터를 추가합니다...")
+        try:
+            added = insert_sample_clothes()
+            print(f">> 샘플 옷 {added}개 추가 완료!")
+            clothes_count = added
+        except Exception as e:
+            print(f">> 샘플 데이터 추가 실패: {e}")
+    else:
+        print(f">> 등록된 옷: {clothes_count}개")
+
+    # 벡터DB 동기화
+    if clothes_count > 0:
+        print(">> 벡터DB 동기화 중...")
+        sync_result = service.clothing_service.sync_to_vector_db()
+        print(f">> 동기화 완료 (새로 추가: {sync_result['synced']}개)")
+    print()
+
+    print("명령어:")
+    print("  - 질문 입력: 코디 추천 받기 (예: '오늘 뭐 입을까?')")
+    print("  - 'list': 등록된 옷 목록")
+    print("  - 'weather': 현재 날씨")
+    print("  - 'quit': 종료")
     print("-" * 50)
 
     while True:
         try:
             user_input = input("\n[질문] ").strip()
 
+            if not user_input:
+                continue
+
             if user_input.lower() in ['quit', 'exit', 'q', '종료']:
                 print("\n이용해주셔서 감사합니다!")
                 break
 
-            if not user_input:
-                print("질문을 입력해주세요.")
+            if user_input.lower() == 'list':
+                clothes = service.clothing_service.get_all_clothes()
+                if not clothes:
+                    print("등록된 옷이 없습니다.")
+                else:
+                    print(f"\n[등록된 옷 목록] ({len(clothes)}개)")
+                    for cloth in clothes:
+                        print(f"  - [{cloth.category.value}] {cloth.name} ({cloth.color.value}, {cloth.style.value})")
                 continue
 
-            print("\n[추천 결과]")
+            if user_input.lower() == 'weather':
+                if not kma_key:
+                    print("기상청 API 키가 설정되지 않았습니다.")
+                    continue
+                weather = service.get_weather("서울")
+                if weather:
+                    print(f"\n{weather.to_description()}")
+                    print(f"추천 계절: {weather.get_season_recommendation()}")
+                else:
+                    print("날씨 정보를 가져올 수 없습니다.")
+                continue
+
+            # 코디 추천
+            print("\n[코디 추천]")
             print("-" * 30)
-            result = service.recommend(user_input)
+            result = service.recommend_outfit(user_input)
             print(result)
 
         except KeyboardInterrupt:
             print("\n\n프로그램을 종료합니다.")
             break
+        except Exception as e:
+            print(f"오류 발생: {e}")
 
 
 if __name__ == "__main__":

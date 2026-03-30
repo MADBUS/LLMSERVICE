@@ -42,12 +42,22 @@ class LLMService:
         """
         full_prompt = f"{self.system_prompt}\n\n사용자: {prompt}"
 
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=full_prompt
-        )
+        try:
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=full_prompt
+            )
 
-        return response.text
+            if response.text:
+                return response.text
+            elif response.candidates:
+                # 후보가 있으면 첫 번째 후보의 텍스트 반환
+                return response.candidates[0].content.parts[0].text
+            else:
+                return "죄송합니다. 응답을 생성할 수 없습니다."
+        except Exception as e:
+            print(f"LLM 응답 생성 오류: {e}")
+            return f"응답 생성 중 오류가 발생했습니다: {e}"
 
     def generate_recommendation(
         self,

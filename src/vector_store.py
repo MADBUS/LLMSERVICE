@@ -135,6 +135,22 @@ class VectorStore:
         )
         return True
 
+    def delete_item(self, item_id: str) -> bool:
+        """
+        아이템 삭제
+
+        Args:
+            item_id: 삭제할 아이템 ID
+
+        Returns:
+            삭제 성공 여부
+        """
+        try:
+            self.collection.delete(ids=[item_id])
+            return True
+        except Exception:
+            return False
+
     def delete_collection(self) -> None:
         """컬렉션 삭제"""
         self.client.delete_collection(self.collection_name)
